@@ -1,0 +1,1082 @@
+---
+title: "Moral Injury Among Diagnostic Radiologist"
+format: html
+editor: visual
+toc: TRUE
+output:
+  html_document:
+    fig_width: 10  # 적절한 폭으로 조정
+bibliography: /Users/Ido/Library/CloudStorage/Dropbox/1.GitHub/Obsidian/☔️Papers_Writing/㊙️Moral Injury Among Diagnostic Radiologists/⭐️4.정리보고서 관련/references_Moral Injury.bib
+---
+
+```{css, echo=FALSE}
+/* 전체 텍스트 폰트 설정 */
+body {
+  font-family: 'Noto Sans KR', sans-serif; /* 예시: 나눔고딕 */
+}
+
+/* 테이블 폭 설정 */
+table {
+  width: 100%; /* 테이블의 너비를 100%로 설정하여 부모 요소에 맞춤 */
+}
+
+/* TOC 스타일 */
+.toc {
+  font-family: 'Noto Sans KR', sans-serif; /* 예시: 나눔고딕 */
+  font-size: 16px; /* 폰트 크기 조정 */
+}
+
+/* TOC 링크 스타일 */
+.toc a {
+  text-decoration: none; /* 링크 밑줄 제거 */
+  color: #0066cc; /* 링크 색상 설정 */
+}
+
+/* 활성 TOC 항목 스타일 */
+.toc .active {
+  font-weight: bold; /* 활성 TOC 항목 글꼴 굵게 설정 */
+}
+
+
+
+
+```
+
+# 🟥Preliminary setting (hidden)
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+rm(list=ls())
+path_results = "/Users/Ido/Library/CloudStorage/Dropbox/2.DataAnalysis/Moral Injury Among Diagnostic Radiologists/Results"
+path_data = "/Users/Ido/Library/CloudStorage/Dropbox/2.DataAnalysis/Moral Injury Among Diagnostic Radiologists/data"
+```
+
+```{r, echo=F}
+# 🟥 Load Functions & Packages ##########################################################################
+## 🟨Install and loading Packages ================================
+install_packages = function(packages, load=TRUE) {
+  # load : load the packages after installation?
+  for(pkg in packages) {
+    if (!require(pkg, character.only = TRUE)) {
+      install.packages(pkg)
+    }
+    
+    if(load){
+      library(pkg, character.only = TRUE, quietly = T)
+    }
+  }
+}
+
+List.list = list()
+List.list[[1]] = visual = c("ggpubr", "ggplot2", "ggstatsplot", "ggsignif", "rlang", "RColorBrewer")
+List.list[[2]] = stat = c("fda", "MASS")
+List.list[[3]] = data_handling = c("tidyverse", "dplyr", "clipr", "tidyr", "readr", "caret", "readxl")
+List.list[[4]] = qmd = c("janitor", "knitr")
+List.list[[5]] = texts = c("stringr")
+List.list[[6]] = misc = c("devtools")
+List.list[[7]] = db = c("RMySQL", "DBI", "odbc", "RSQL", "RSQLite")
+List.list[[8]] = sampling = c("rsample")
+
+packages_to_install_and_load = unlist(List.list)
+install_packages(packages_to_install_and_load)
+
+## 🟧dplyr =======================================================
+filter = dplyr::filter
+select = dplyr::select
+
+
+## 🟧Loading my functions ======================================================
+load_functions = function(path_functions){
+  list.files(path_functions, full.names = T) %>%
+    purrr::walk(source)
+}
+path_list = list()
+path_list[1] = "/Users/Ido/Library/CloudStorage/Dropbox/1.GitHub/R___refineR/R"
+path_list[2] = "/Users/Ido/Library/CloudStorage/Dropbox/1.GitHub/R___StatsR/R"
+Load = sapply(path_list, load_functions)
+
+```
+
+# 🟥Redefined Questions names
+
+-   Rules of the new names
+
+    -   *Category* : A categorical question
+
+    -   *Written* : Texts written by each respondent
+
+    -   *Score* : A score question
+
+-   Some question texts are shortened due to their length in this table.
+
+```{r, echo = F}
+library(dplyr)
+library(knitr) 
+
+# New name *********************************************
+New_Name = c(
+    "Q1_Category_Concepts",
+    "Q2_Category_Survey",
+    "Q3_Category_Position",
+    "Q4_Category_Years",
+    "Q5_Written_Country",
+    "Q6_Category_Sex",
+    "Q7_Category_Ethnicity",
+    "Q8_Category_Marriage",
+    "Q9_Category_Practice",
+    "Q10_Written_Ownership",
+    "Q11_Category_HomeWork",
+    "Q12_Category_PracticeHospital",
+    "Q13_Category_Leadership",
+    "Q14_Category_Practicing_Procedure",
+    "Q15_Category_Practicing_Diagnostic",
+    "Q16_Category_Practicing_Administrative",
+    "Q17_Category_Trainee_Level",
+    "Q18_Score_QOL",
+    "Q19_Score_MI_Betrayed",
+    "Q20_Score_MI_Guilt",
+    "Q21_Score_MI_Ashamed",
+    "Q22_Score_MI_Troubled",
+    "Q23_Score_MI_Trustworthy",
+    "Q24_Score_MI_Meaningful",
+    "Q25_Score_MI_Forgiven",
+    "Q26_Score_MI_Failure",
+    "Q27_Score_MI_Punishment",
+    "Q28_Score_MI_ReligiousFaith",
+    "Q29_Category_Distress",
+    "Q30_Written_Contributor",
+    "Q31_Written_Alleviate"
+  )
+
+# Original Name *********************************************
+Original_Name = c(
+    "With.which.of.the.following.concepts.are.you.familiar.",
+    "How.did.you.hear.about.this.survey.",
+    "I.am",
+    "How.many.years.have.you.been.in.practice.",
+    "Which.country.do.you.practice.in.",
+    "What.is.your.gender.",
+    "What.is.your.race.ethnicity.",
+    "What.is.your.marital.status.",
+    "What.best.describes.your.practice.",
+    "What.best.describes.the.ownership.of.your.practice.",
+    "What.percentage.of.your.work.is.completed.at.home.",
+    "Do.you.practice.at.more.than.one.hospital.",
+    "Do.you.have.an.institutional.leadership.position...e.g..program.director..section.chief..department.chair.",
+    "X.Practicing.DRs.only..What.percentage.of.your.responsibilities.pertain.to.procedures.direct.patient.care.",
+    "X.Practicing.DRs.only..What.percentage.of.your.responsibilities.pertain.to.diagnostic.radiology.",
+    "X.Practicing.DRs.only..What.percentage.of.your.time.is.dedicated.to.administrative.non.clinical.",
+    
+    "X.Trainees.only..What.is.your.level.of.training.",
+    
+    "Choose.any.number.between.0.and.100.that.describes.your.quality.of.life",
+    
+    "I.feel.betrayed.by.other.health.professionals.whom.I.once.trusted.",
+    
+    "I.feel.guilt.over.failing.to.save.someone.from.being.seriously.injured.or.dying.",
+    
+    "I.feel.ashamed.about.what.I.ve.done.or.not.done.when.providing.care.to.my.patients.",
+    
+    "I.am.troubled.by.having.acted.in.ways.that.violated.my.own.morals.or.values.",
+    
+    "Most.people.with.whom.I.work.as.a.health.professional.are.trustworthy.",
+    
+    "I.have.a.good.sense.of.what.makes.my.life.meaningful.as.a.health.professional.",
+    
+    "I.have.forgiven.myself.for.what.s.happened.to.me",
+    
+    "All.in.all..I.am.inclined.to.feel.that.I.am.a.failure",
+    
+    "I.sometimes.feel.God.is.punishing.me",
+    
+    "Compared.to.before.my.religious.spiritual.faith.was.strengthened.",
+    
+    "Do.the.feelings.you.indicated.above.cause.you.significant.distress.or.impair.your.ability",
+    
+    "As.you.understand.it..what.do.you.believe.is.the.greatest.contributor.to.moral.injury.",
+    
+    "What.do.you.believe.would.limit.alleviate.moral.injury.most."
+  )
+
+# 변수 이름 매핑 *****************************************
+variable_names <- data.frame(New_Name, Original_Name)
+
+# kable을 사용하여 표 출력
+kable(variable_names, col.names = c("New Question Name", "Original Question Name"))
+
+```
+
+# 🟥🍀Important Notes
+
+## 🟧 MI scores
+
+-   Based on the findings in the previous paper, I added scores for 10 items related to MI.
+
+    -   "MI assessment was performed using the *MISS-HP* (12,15). MI was evaluated *by summing subscores of 10 questions*. A MISS-HP score ≥ 36 was indicative of experiencing MI (12,15)."
+
+## 🟧No Data Available
+
+In the following questions, some fields were left empty, and they were considered to be NA.
+
+-   `Q11_Categorical_HomeWork`
+
+-   `Q13_Categorical_Leadership`
+
+-   `Q17_Categorical_Trainee_Level`
+
+## 🟧Q18_Score_QOL
+
+-   The two subjects' answers were strange.
+-   Please let me know if I should exclude these two subjects.
+
+### 🟨`Moderately good QOL`
+
+-   One respondent described their quality of life as "Moderately good quality of life" without providing a numerical score.
+
+-   For analysis purposes, I assigned a score of '47.5,' which represents the average score of the 'Moderately good quality of life' category (55, 50, 45, 40).
+
+```{r}
+mean(c(55, 50, 45, 40))
+```
+
+### 🟨`Q70`
+
+-   Also, the answer "Q70" of one subject was considered to be "70"
+
+# 🟥Internal Consistency on MI-related items
+
+## 🟧Notes
+
+-   Those 10 items related to MI could be divided into two group
+
+-   Hence, inverse coding was done on these positive questions.
+
+    -   For instance, I converted a score of "1" to "10".
+
+-   Positive questions
+
+```{r, echo=F}
+path = paste(path_data, "Data___2.Consistency.rds", sep = "/")
+data_internal = readRDS(path)
+
+positive = data_internal$survey_questions.df %>% dplyr::filter(Category=="Positive") %>% dplyr::select(2:3)
+
+kable(positive, col.names = c("New Question Name", "Original Question Name"))
+```
+
+-   Negative questions
+
+```{r, echo=F}
+negative = data_internal$survey_questions.df %>% dplyr::filter(Category=="Negative") %>% dplyr::select(2:3)
+
+kable(negative, col.names = c("New Question Name", "Original Question Name"))
+```
+
+## 🟧Cronbach's Alpha ($\alpha$)
+
+### 🟨Notes
+
+-   Cronbach’s coefficient $\alpha$ [@cronbach1951coefficient] is pehaps the most used (and most misused) estimate of the internal consistency of a test.
+-   Since the previous study used this measure, this is also included.
+
+### 🟨Result
+
+-   The Cronbach's Alpha value of ***0.7387*** indicates that your scale or measurement instrument has acceptable internal consistenc
+
+```{r, echo = F}
+
+result = readRDS(paste0(path_results, 
+                        "/Results___1.InternalConsistency.rds"))
+
+result$Cronbach$total
+```
+
+## 🟧McDonald's Omega ($\omega$)
+
+### 🟨Notes
+
+-   The Cronbach's $\alpha$ has several limitations [@kalkbrenner2023]. These limitations suggest that Cronbach's $\alpha$ might not always provide a reliable measure of internal consistency, especially for tests that are multidimensional.
+
+-   @hayes2020use argues for a shift towards using $\omega$ due to its more accurate and general estimation of reliability.
+
+-   Thus, further analysis was done.
+
+### 🟨Result
+
+-   An omega total (ω) result of ***0.8595269*** indicates a high level of internal consistency for your measurement scale, suggesting that the items within the scale are well-correlated and measure the same underlying construct effectively.
+
+```{r, echo = FALSE}
+
+result$Omega$omega.tot
+```
+
+# 🟥Descriptive Statistics on Categorical Data
+
+```{r, echo = FALSE}
+Results_Category.list = readRDS(paste(path_results, "Results___2.DescriptiveStatistics___Categorical.rds", sep="/"))
+
+```
+
+## 🟧Q1_Category_Concepts
+
+```{r, echo = FALSE}
+kable(Results_Category.list$cartegory[[1]])
+Results_Category.list$plot[[1]]
+```
+
+## 🟧Q2_Category_Survey
+
+```{r, echo=F}
+n=2
+# kable(Results_Category.list$cartegory$Q2_Category_Survey
+kable(Results_Category.list$cartegory[[n]])
+Results_Category.list$plot[[n]]
+```
+
+## 🟧Q3_Category_Position
+
+```{r, echo=F}
+n=3
+# names(Results_Category.list$cartegory)[n]
+kable(Results_Category.list$cartegory[[n]])
+Results_Category.list$plot[[n]]
+```
+
+## 🟧Q4_Category_Years
+
+```{r, echo=F}
+n=4
+# names(Results_Category.list$cartegory)[4]
+kable(Results_Category.list$cartegory[[n]])
+Results_Category.list$plot[[n]]
+```
+
+## 🟧Q6_Category_Sex
+
+```{r, echo=F}
+n=5
+# names(Results_Category.list$cartegory)[n]
+kable(Results_Category.list$cartegory[[n]])
+Results_Category.list$plot[[n]]
+```
+
+## 🟧Q7_Category_Ethnicitiy
+
+```{r, echo=F}
+n=6
+# names(Results_Category.list$cartegory)[n]
+kable(Results_Category.list$cartegory[[n]])
+Results_Category.list$plot[[n]]
+```
+
+## 🟧Q8_Category_Marriage
+
+```{r, echo=F}
+n=7
+# names(Results_Category.list$cartegory)[n]
+kable(Results_Category.list$cartegory[[n]])
+Results_Category.list$plot[[n]]
+```
+
+## 🟧Q9_Category_Practice
+
+```{r, echo=F}
+n=8
+# names(Results_Category.list$cartegory)[n]
+kable(Results_Category.list$cartegory[[n]])
+Results_Category.list$plot[[n]]
+```
+
+## 🟧Q11_Category_HomeWork
+
+```{r, echo=F}
+n=9
+# names(Results_Category.list$cartegory)[n]
+kable(Results_Category.list$cartegory[[n]])
+Results_Category.list$plot[[n]]
+```
+
+## 🟧Q12_Category_PracticeHospital
+
+```{r, echo=F}
+n=10
+# names(Results_Category.list$cartegory)[n]
+kable(Results_Category.list$cartegory[[n]])
+Results_Category.list$plot[[n]]
+```
+
+## 🟧Q13_Category_Leadership
+
+```{r, echo=F}
+n=11
+# names(Results_Category.list$cartegory)[n]
+kable(Results_Category.list$cartegory[[n]])
+Results_Category.list$plot[[n]]
+```
+
+## 🟧Q14_Category_Practicing_Procedure
+
+```{r, echo=F}
+n=12
+# names(Results_Category.list$cartegory)[n]
+kable(Results_Category.list$cartegory[[n]])
+Results_Category.list$plot[[n]]
+```
+
+## 🟧Q15_Category_Practicing_Diagnostic
+
+```{r, echo=F}
+n=13
+# names(Results_Category.list$cartegory)[n]
+kable(Results_Category.list$cartegory[[n]])
+Results_Category.list$plot[[n]]
+```
+
+## 🟧Q16_Category_Practicing_Administrative
+
+```{r, echo=F}
+n=14
+# names(Results_Category.list$cartegory)[n]
+kable(Results_Category.list$cartegory[[n]])
+Results_Category.list$plot[[n]]
+```
+
+## 🟧Q17_Category_Trainee_Level
+
+```{r, echo=F}
+n=15
+# names(Results_Category.list$cartegory)[n]
+kable(Results_Category.list$cartegory[[n]])
+Results_Category.list$plot[[n]]
+```
+
+## 🟧Q29_Category_Distress
+
+```{r, echo=F}
+n=16
+# names(Results_Category.list$cartegory)[n]
+kable(Results_Category.list$cartegory[[n]])
+Results_Category.list$plot[[n]]
+```
+
+# 🟥Correlation
+
+## 🟧Notes
+
+-   Those 10 questions related to MI (Q19 \~ Q28) were summed up after inverse coding on the positive questions: `MISS-HP`
+
+-   The correlation was calculated between `MISS-HP` and `QOL`(Q18_Score_QOL).
+
+-   Two types of correlations were considered
+
+    \(1\) Linearity : Pearson correlation
+
+    \(2\) Monotonocity : Spearman correlation
+
+## 🟧Correlation with MI (Total)
+
+```{r, echo=F}
+data = readRDS(paste0(path_data, "/Data___4.Corr.rds"))
+result = readRDS(paste0(path_results, "/Results___Correlation.rds"))
+```
+
+-   The estimated coefficient value
+-   **Spearman**
+    -   The monotone relationship was statistically significant (p \< 0.01).
+-   **Pearson**
+    -   The linear relationship was statistically significant (p \< 0.01).
+-   If MI increases, it can be inferred that QOL tends to decrease statistically.
+
+```{r, echo=F}
+kable(result$Corr_Result_QOL)
+```
+
+```{r, echo = F, message =F}
+result$Corr_Result_QOL_Plot
+
+```
+
+## 🟧Correlation with MI subscores
+
+-   It is found that correlation between `QOL score` and `Q26`(Failure) was the most significant.
+
+-   The length of each bar represents the magnitude of the correlation values, which are also displayed on each bar.
+
+-   The star sign on each bar indicates the level of significance. That is,
+
+    -   `***` : p \< 0.001
+
+    -   `**` : p \< 0.01
+
+    -   \* : p \< 0.05
+
+```{r, echo=F}
+result$Corr_tests
+```
+
+# 🟥MI `Yes` vs `No`
+
+```{r, echo=F}
+result = readRDS(paste0(path_results, "/Results___ANOVA_1_Category_MI_Group.rds"))
+MI = result$Score_MI
+QOL = result$Score_QOL
+```
+
+## 🟧Notes
+
+-   The `Yes` group includes subjects whose `MISS-HP` *score was ≥ 36.*
+
+-   The others are in `No`.
+
+-   Although I conducted a mean difference test for this group regarding `MISS-HP`, according to the previous analyses, I wonder if this test is necessary when the groups are delineated based on `MISS-HP` scores. Given that the division is inherently based on `MISS-HP`, the significance of the p-value is inherently expected.
+
+## 🟧`MI`
+
+### 🟨Descriptive Statistics
+
+-   The sample mean and sd of `total MI score` for each group :
+
+```{r, echo=F}
+kable(MI$descriptive_summary)
+```
+
+### 🟨Distributions
+
+#### 🟩Combined Histogram
+
+```{r, echo=F}
+MI$pretest$normality$plot$hist_combined
+```
+
+#### 🟩Seperate Histogram
+
+-   Histogram of MI score for each group
+
+```{r, echo=F}
+MI$pretest$normality$plot$hist_eachgroup
+```
+
+#### 🟩QQ plot for Checking Normality
+
+-   Though they don't seem to normally distributed, they are considered to be asymptotically normal due to its large sample size.
+
+```{r, echo=F}
+MI$pretest$normality$plot$qqplot
+```
+
+### 🟩 Mean Difference Test Result
+
+-   The mean difference between these two groups were statistically significant.
+
+-   However, as I mentioned, this result seems meaningless.
+
+```{r, echo=F, message = F}
+kable(MI$`test result as data.frame`)
+# 다음 코드 확인 필요
+# MI$ANOVA$Combined_Results.list$ANOVA$Boxplots$Score_MI
+```
+
+```{r, echo=F}
+MI$`box plots`
+```
+
+## 🟧QOL
+
+### 🟨Descriptive Statistics
+
+-   The sample mean and sd of `QOL score` for each group :
+
+```{r, echo=F}
+QOL$descriptive_summary %>% kable
+```
+
+### 🟨Distribution
+
+#### 🟩Combined Histogram
+
+```{r, echo=F}
+QOL$pretest$normality$plot$hist_combined
+```
+
+#### 🟩Separate histogram
+
+```{r, echo = F}
+QOL$pretest$normality$plot$hist_eachgroup
+```
+
+#### 🟩QQ plot
+
+```{r, echo = F}
+QOL$pretest$normality$plot$qqplot
+```
+
+### 🟨Mean difference test
+
+-   The mean difference between MI groups was statistically extremely significant.
+
+    -   p-val \< 0.0001
+
+-   Since the p-value was significantly low, this can indicate strong evidence in the difference of QOL between MI groups.
+
+```{r, echo=F, message=F}
+QOL$`test result as data.frame` %>% kable
+```
+
+```{r, echo=F}
+QOL$`box plots`
+```
+
+# 🟥Mean difference
+
+```{r, echo=F}
+path = paste(path_results, "Results___ANOVA_2_MI_QOL.rds", sep = "/")
+results = readRDS(path)
+
+MI = results$results_MI$each_var_results$Score_MI
+QOL = results$results_QOL$each_var_results$Score_QOL
+```
+
+## 🟧Notes
+
+-   Before selecting type of test, `Normality test` and `Homoscedasticity test` was done.
+
+    -   Normality
+
+        -   if there were outliers, the Modified Jarque-Bera (MJB) test was employed[@rana2021].
+
+        -   In other cases, the Shapiro-Wilk test was employed.
+
+## 🟧`Position`
+
+### 🟨MI
+
+-   The sample mean and sd of `total MI score` for each group :
+
+```{r, echo=F, message = F}
+Var = "Q3_Category_Position"
+ith_MI = MI[[Var]]
+ith_MI$descriptive_summary %>% kable
+```
+
+-   No statistical significance was found. (adj.p=0.5133)
+
+```{r, echo=F, message=F}
+ith_MI$`test result as data.frame` %>% kable
+ith_MI$`box plots`
+# 코드  확인 필요
+# Result$Combined_Results.list$ANOVA$Boxplots$Score_MI
+```
+
+### 🟨QOL
+
+-   The sample mean and sd of QOL for each group :
+
+```{r, echo=F, message=F}
+ith_QOL = QOL[[Var]]
+ith_QOL$descriptive_summary %>% kable
+```
+
+-   No statistical significance was found. (p=0.8018)
+
+```{r, echo=F, message = F}
+ith_QOL$`test result as data.frame` %>% kable()
+ith_QOL$`box plots`
+# 코드 확인 필요
+# Result$Combined_Results.list$ANOVA$Boxplots$Score_QOL
+```
+
+## 🟧`Year`
+
+### 🟨MI
+
+-   The sample mean and sd of `total MI score` for each group :
+
+```{r, echo=F}
+Var = "Q4_Category_Years"
+ith_MI = MI[[Var]]
+ith_MI$descriptive_summary %>% kable
+```
+
+-   No statistical significance was found. (p=0.5645)
+
+```{r, echo=F, message = F}
+ith_MI$`test result as data.frame` %>% kable
+ith_MI$`box plots`
+```
+
+### 🟨QOL
+
+-   The sample mean and sd of QOL for each group :
+
+```{r, echo=F}
+ith_QOL = QOL[[Var]]
+ith_QOL$descriptive_summary %>% kable
+```
+
+-   No statistical significance was found overall. (p=0.26)
+-   However, if we conduct further analysis, two cases among subgroup comparisons were significant.
+    -   `<1 year` vs `1-10 years` (p = 0.0314)
+    -   `1-10 years` vs `10-20 years` (p = 0.026)
+
+```{r, echo=F, message = F}
+ith_QOL$`test result as data.frame` %>% kable()
+ith_QOL$`post hoc with the smallest adj p-values` %>% kable()
+ith_QOL$`box plots`
+```
+
+## 🟧Sex : Male vs Female
+
+-   The other groups (`Other`, `Prefer not to say`) were excluded
+
+### 🟨MI
+
+-   The sample mean and sd of `total MI score` for each group :
+
+```{r, echo=F, message=F}
+Var = "Category_Sex_Male_Female_Only"
+ith_MI = MI[[Var]]
+ith_MI$descriptive_summary %>% kable
+```
+
+-   No statistical significance was found. (p=0.0775)
+
+```{r, echo=F, message=F}
+ith_MI$`test result as data.frame` %>% kable
+ith_MI$`box plots`
+```
+
+### 🟨QOL
+
+-   The sample mean and sd of `QOL score` for each group :
+
+```{r, echo=F}
+ith_QOL = QOL[[Var]]
+ith_QOL$descriptive_summary %>% kable
+```
+
+-   No statistical significance was found. (p=0.29)
+
+```{r, echo = F, message=F}
+ith_QOL$`test result as data.frame` %>% kable()
+ith_QOL$`box plots`
+```
+
+## 🟧Sex : Male vs The others
+
+-   The other groups were considered to be one group (Not Male).
+    -   `Female`
+    -   `Other`
+    -   `Prefer not to say`
+
+### 🟨MI
+
+-   The sample mean and sd of `total MI score` for each group :
+
+```{r, echo=F}
+Var = "Category_Sex_Male_and_Not_Male"
+ith_MI = MI[[Var]]
+ith_MI$descriptive_summary %>% kable
+```
+
+-   No statistical significance was found. (p=0.5226)
+
+```{r, echo=F, message=F}
+ith_MI$`test result as data.frame` %>% kable
+ith_MI$`box plots`
+#Result$Combined_Results.list$ANOVA$Boxplots$Score_MI
+```
+
+### 🟨QOL
+
+-   The sample mean and sd of `QOL score` for each group :
+
+```{r, echo=F}
+ith_QOL = QOL[[Var]]
+ith_QOL$descriptive_summary %>% kable
+```
+
+-   No statistical significance was found. (p=0.297)
+
+```{r, echo=F, message=F}
+ith_QOL$`test result as data.frame` %>% kable()
+ith_QOL$`box plots`
+```
+
+## 🟧Marriage : Married vs Not Married
+
+-   2 groups
+
+    -   Married
+
+    -   Not married (single + long-term partner + prefer not to say)
+
+### 🟨MI
+
+-   The sample mean and sd of `total MI score` for each group :
+
+```{r, echo=F}
+Var = "Category_Marriage_Only"
+ith_MI = MI[[Var]]
+ith_MI$descriptive_summary %>% kable
+```
+
+-   No statistical significance was found. (p=0.145)
+
+```{r, echo=F, message = F}
+ith_MI$`test result as data.frame` %>% kable
+ith_MI$`box plots`
+#Result$Combined_Results.list$ANOVA$Boxplots$Score_MI
+```
+
+### 
+
+### 🟨QOL
+
+-   The sample mean and sd of `QOL score` for each group :
+
+```{r, echo=F}
+ith_QOL = QOL[[Var]]
+ith_QOL$descriptive_summary %>% kable
+```
+
+-   The mean difference of QOL was statistically significant (p = 0.0153).
+
+```{r, echo=F, message=F}
+ith_QOL$`test result as data.frame` %>% kable()
+ith_QOL$`box plots`
+```
+
+## 🟧 Marriage : Married (+Long term) vs Not Married
+
+-   In this analysis, those in a `long-term relationship` were categorized within the `Married` group.
+
+### 🟨MI
+
+#### 🟩Summary for each category
+
+-   The sample mean and sd of `total MI score` for each group :
+
+```{r, echo=F}
+Var = "Category_Marriage_LongTerm"
+ith_MI = MI[[Var]]
+ith_MI$descriptive_summary %>% kable
+```
+
+-   No statistical significance was found. (p=0.7803)
+
+```{r, echo=F, message=F}
+ith_MI$`test result as data.frame` %>% kable
+ith_MI$`box plots`
+#Result$Combined_Results.list$ANOVA$Boxplots$Score_MI
+```
+
+### 🟨QOL
+
+#### 🟩Summary for each category
+
+-   The sample mean and sd of `QOL score` for each group :
+
+```{r, echo=F}
+ith_QOL = QOL[[Var]]
+ith_QOL$descriptive_summary %>% kable
+```
+
+-   No statistical significance was found. (p=0.2066)
+
+```{r, echo=F, message = F}
+ith_QOL$`test result as data.frame` %>% kable()
+ith_QOL$`box plots`
+```
+
+## 🟧Q9 Practice
+
+### 🟨Notes
+
+-   `Prefer not to say` was excluded.
+
+## 🟧Practice Hospital
+
+-   Do you practice at more than one hospital?
+
+    -   Yes
+
+    -   No
+
+### 🟨MI
+
+-   The sample mean and sd of `total MI score` for each group :
+
+```{r, echo=F}
+Var = "Q12_Category_PracticeHospital"
+ith_MI = MI[[Var]]
+ith_MI$descriptive_summary %>% kable
+```
+
+-   No statistical significance was found. (p=0.52)
+
+```{r, echo=F, message=F}
+ith_MI$`test result as data.frame` %>% kable
+ith_MI$`box plots`
+#Result$Combined_Results.list$ANOVA$Boxplots$Score_MI
+```
+
+### 🟨QOL
+
+-   The sample mean and sd of `QOL score` for each group :
+
+```{r, echo=F}
+ith_QOL = QOL[[Var]]
+ith_QOL$descriptive_summary %>% kable
+```
+
+-   No statistical significance was found. (p=0.8018)
+
+```{r, echo=F, message=F}
+ith_QOL$`test result as data.frame` %>% kable()
+ith_QOL$`box plots`
+```
+
+# 🟥Wordcloud
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+path_results = "/Users/Ido/Library/CloudStorage/Dropbox/2.DataAnalysis/Moral Injury Among Diagnostic Radiologists/Results"
+path_data = "/Users/Ido/Library/CloudStorage/Dropbox/2.DataAnalysis/Moral Injury Among Diagnostic Radiologists/data"
+Data.df = readRDS(list.files(path_data, pattern = "Data___6", full.names = T))
+
+Result = readRDS(list.files(path_results, patter = "Results___Wordcloud", full.names=T))
+
+```
+
+## 🟨Notes
+
+## 🟨Q30_Written_Contributor
+
+-   The answers could be classified into the following groups:
+
+    -   Bureaucracy and workload
+
+    -   Lack of autonomy and restrictions
+
+    -   Lack of trust and transparency
+
+    -   System failures and patient care
+
+    -   Workplace challenges and stress
+
+    -   Self conflict and emotional issues
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# names(Result[[1]])
+Text___Wordcloud <- function(text, path_save=NULL, filename=NULL) {
+  pkgs <- c("wordcloud", "stringr", "tm", "RColorBrewer", "dplyr")
+  for(ith in pkgs){
+    if(!require(ith, character.only = TRUE)){
+      install.packages(ith)
+      library(ith, character.only = TRUE)
+    }
+  }
+
+
+  # 텍스트 데이터를 Corpus 객체로 변환
+  text = text %>% unlist
+  docs <- Corpus(VectorSource(text))
+
+  # 텍스트 정제: 소문자 변환, 불용어 제거, 특수 문자 제거, 숫자 제거
+  docs <- suppressWarnings(tm_map(docs, content_transformer(tolower)))
+  docs <- suppressWarnings(tm_map(docs, removePunctuation))
+  docs <- suppressWarnings(tm_map(docs, removeNumbers))
+  docs <- suppressWarnings(tm_map(docs, removeWords, stopwords("english")))
+
+  # TermDocumentMatrix 생성
+  tdm <- TermDocumentMatrix(docs)
+
+  # 행렬로 변환하고 빈도수 계산
+  m <- as.matrix(tdm)
+  wordFreqs <- sort(rowSums(m), decreasing=TRUE)
+
+
+
+  if(is.null(path_save) && is.null(filename)){
+    # 워드 클라우드 생성
+    wordcloud(names(wordFreqs), wordFreqs, min.freq=1, max.words=200,
+              random.order=FALSE, scale=c(3, 0.5), rot.per=0.1,
+              colors=brewer.pal(8, "Dark2"))
+  }else{
+    # 파일로 저장
+    png(file=paste0(path_save, "/", filename, ".png"), width=800, height=600, res=120)
+
+    # 워드 클라우드 생성
+    wordcloud(names(wordFreqs), wordFreqs, min.freq=1,
+              max.words=100, random.order=FALSE,
+              colors=brewer.pal(8, "Dark2"))
+
+    # warning 발생하는 경우
+    # wordcloud(names(wordFreqs), wordFreqs, min.freq=2, max.words=100,
+    #           random.order=FALSE, scale=c(3, 0.5), rot.per=0.1,
+    #           colors=brewer.pal(8, "Dark2"))
+
+    # 그래픽 장치 닫기
+    dev.off()
+  }
+
+}
+
+Text___Wordcloud(text = Data.df[, "Q30_Written_Contributor"])
+```
+
+## 🟨Q31_Written_Alleviate
+
+-   The answers could be classified into the following groups:
+
+    -   Administrative reduction and respect
+
+    -   Workload reduction and support
+
+    -   Professional autonomy and leadership
+
+    -   Patient centered care and decision engagement
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# names(Result[[2]])
+Text___Wordcloud(text = Data.df[, "Q31_Written_Alleviate"])
+```
+
+# 🟥Summary of analysis
+
+## 🟧Correlation
+
+-   The correlation coefficients between `Score_QOL` and the sub scores of `MI`.
+
+```{=html}
+<!-- -->
+```
+-   Only the upper 6 variables were statistically significant.
+
+```{r, echo=F}
+result = readRDS(paste0(path_results, "/Results___Correlation.rds"))
+result$Corr_tests
+```
+
+## 🟧Mean difference Tests
+
+```{r, echo=F}
+path = paste(path_results, "Results___ANOVA_2_MI_QOL.rds", sep = "/")
+results = readRDS(path)
+MI = results$results_MI
+QOL = results$results_QOL
+```
+
+### 🟨MI score
+
+-   Non of them were significant.
+
+```{r, echo=F}
+MI$combined_results_for_reporting %>% kable
+```
+
+### 🟨QOL Score
+
+-   Only `Category_Marriage_Only` and `Category_MI_Group` were significant.
+
+```{r, echo=F}
+QOL$combined_results_for_reporting %>% kable
+```
